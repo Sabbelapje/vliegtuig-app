@@ -13,16 +13,30 @@
   <script>
     let userLat, userLon;
 
-    // Vraag locatie
-    navigator.geolocation.getCurrentPosition(pos => {
-      userLat = pos.coords.latitude;
-      userLon = pos.coords.longitude;
-      document.getElementById("status").innerText = "Locatie gevonden ✔";
-      loadFlights();
-    });
+    function showError(message) {
+      document.getElementById("status").innerText = "❌ " + message;
+    }
+
+    // Vraag locatie met foutafhandeling
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        userLat = pos.coords.latitude;
+        userLon = pos.coords.longitude;
+        document.getElementById("status").innerText = "📍 Locatie gevonden ✔";
+        loadFlights();
+      },
+      err => {
+        showError("Locatie kon niet worden opgehaald. Controleer je instellingen.");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
 
     function distance(lat1, lon1, lat2, lon2) {
-      const R = 6371; // km
+      const R = 6371;
       const dLat = (lat2 - lat1) * Math.PI / 180;
       const dLon = (lon2 - lon1) * Math.PI / 180;
       const a = 
@@ -34,48 +48,63 @@
     }
 
     async function loadFlights() {
-      document.getElementById("status").innerText = "Vliegtuigen laden...";
+      try {
+        document.getElementById("status").innerText = "✈️ Vliegtuigen laden...";
 
-      const res = await fetch("https://opensky-network.org/api/states/all");
-      const data = await res.json();
+        const res = await fetch("https://opensky-network.org/api/states/all");
+        const data = await res.json();
 
-      const list = document.getElementById("flights");
-      list.innerHTML = "";
+        const list = document.getElementById("flights");
+        list.innerHTML = "";
 
-      data.states.forEach(flight => {
-        const lat = flight[6];
-        const lon = flight[5];
-        const callsign = flight[1];
-        const altitude = flight[7];
+        let found = false;
 
-        if (lat && lon) {
-          const dist = distance(userLat, userLon, lat, lon);
+        data.states.forEach(flight => {
+          const lat = flight[6];
+          const lon = flight[5];
+          const callsign = flight[1];
+          const altitude = flight[7];
 
-          if (dist < 10 && altitude > 3000) {
-            const li = document.createElement("li");
-            li.innerText = `${callsign} - ${Math.round(dist)} km - ${Math.round(altitude)} m`;
-            list.appendChild(li);
+          if (lat && lon) {
+            const dist = distance(userLat, userLon, lat, lon);
 
-            // Notificatie
-            if (Notification.permission === "granted") {
-              new Notification("✈️ Vliegtuig boven je!", {
-                body: `${callsign} - ${Math.round(altitude)} meter`
-              });
+            if (dist < 10 && altitude > 3000) {
+              found = true;
+
+              const li = document.createElement("li");
+              li.innerText = `${callsign || "Onbekend"} - ${Math.round(dist)} km - ${Math.round(altitude)} m`;
+              list.appendChild(li);
+
+              if (Notification.permission === "granted") {
+                new Notification("✈️ Vliegtuig boven je!", {
+                  body: `${callsign || "Onbekend"} - ${Math.round(altitude)} meter`
+                });
+              }
             }
           }
-        }
-      });
+        });
 
-      document.getElementById("status").innerText = "Klaar ✔";
+        if (!found) {
+          document.getElementById("status").innerText = "😴 Geen vliegtuigen dichtbij";
+        } else {
+          document.getElementById("status").innerText = "👀 Vliegtuig gevonden!";
+        }
+
+      } catch (e) {
+        showError("Fout bij laden van vliegtuigen (API probleem)");
+      }
     }
 
-    // Vraag notificatie toestemming
+    // Notificatie toestemming
     if (Notification.permission !== "granted") {
       Notification.requestPermission();
     }
 
-    // Elke 60 seconden opnieuw checken
-    setInterval(loadFlights, 60000);
+    setInterval(() => {
+      if (userLat && userLon) {
+        loadFlights();
+      }
+    }, 60000);
   </script>
 </body>
 </html>
