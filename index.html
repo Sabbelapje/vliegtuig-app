@@ -17,7 +17,6 @@
       document.getElementById("status").innerText = "❌ " + message;
     }
 
-    // Vraag locatie met foutafhandeling
     navigator.geolocation.getCurrentPosition(
       pos => {
         userLat = pos.coords.latitude;
@@ -51,7 +50,8 @@
       try {
         document.getElementById("status").innerText = "✈️ Vliegtuigen laden...";
 
-        const res = await fetch("https://opensky-network.org/api/states/all");
+        // Proxy gebruiken om CORS te omzeilen
+        const res = await fetch("https://api.allorigins.win/raw?url=https://opensky-network.org/api/states/all");
         const data = await res.json();
 
         const list = document.getElementById("flights");
@@ -91,11 +91,10 @@
         }
 
       } catch (e) {
-        showError("Fout bij laden van vliegtuigen (API probleem)");
+        showError("Fout bij laden van vliegtuigen (proxy/API probleem)");
       }
     }
 
-    // Notificatie toestemming
     if (Notification.permission !== "granted") {
       Notification.requestPermission();
     }
