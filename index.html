@@ -50,8 +50,8 @@
       try {
         document.getElementById("status").innerText = "✈️ Vliegtuigen laden...";
 
-        // Proxy gebruiken om CORS te omzeilen
-        const res = await fetch("https://api.allorigins.win/raw?url=https://opensky-network.org/api/states/all");
+        // Betere proxy (ThingProxy)
+        const res = await fetch("https://thingproxy.freeboard.io/fetch/https://opensky-network.org/api/states/all");
         const data = await res.json();
 
         const list = document.getElementById("flights");
